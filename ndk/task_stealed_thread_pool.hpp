@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <chrono>
 #include "sync_deque.hpp"
+
+extern bool global_exit_flag;
 class worker_t;
 using workers_ptr = std::shared_ptr<std::vector<std::shared_ptr<worker_t>>>;
 using task_t = std::function<void(const std::string &)>;
@@ -44,7 +46,7 @@ private:
     }
     void execute() {
         // thread_id_ = std::this_thread::get_id();
-        while (enabled_) {
+        while ((false == global_exit_flag) && enabled_) {
             if (work_num_ != workers_->size()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 continue;
@@ -86,6 +88,7 @@ public:
             worker->join();
         }
         workers_->clear();
+        printf("task_stealed_thread_pool join.!\n");
     }
     inline bool add_task(const task_t &task, const std::string &arg) {
         auto worker = get_rand_worker();

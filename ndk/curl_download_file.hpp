@@ -50,8 +50,8 @@ public:
         static const int BUFF_SIZE = 256;
         char buffer[BUFF_SIZE] = "";
         do {
-            nread = url_fread(buffer, 1, sizeof(buffer));
-            fwrite(buffer, 1, nread, fp_local);
+            nread = url_fread(buffer, sizeof(buffer), 1);
+            fwrite(buffer, nread, 1, fp_local);
         } while(nread > 0);
         fclose(fp_local);
         return true;
@@ -136,7 +136,7 @@ private:
     }
     void use_buffer(size_t want) {
         if (data_.buffer_pos <= want) {
-            free(data_.buffer);
+            free(data_.buffer);         // already free the memory when current pos <= want
             data_.buffer = nullptr;
             data_.buffer_pos = 0;
             data_.buffer_len = 0;
@@ -156,7 +156,6 @@ private:
         }
         memcpy(ptr, data_.buffer, want);
         use_buffer(want);
-        want /= size;
         return want;
     }
 private:

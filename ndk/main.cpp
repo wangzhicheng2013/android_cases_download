@@ -1,38 +1,16 @@
 #include <signal.h>
-#include "download_task.hpp"
+#include "scan_files_thread.hpp"
+#include "move_files_thread.hpp"
+
+int max_keep_cases_count = 0;
+bool global_exit_flag = false;
+
 task_stealed_thread_pool global_thread_pool;
 std::mutex global_lock;
+cond_queue<std::string>global_queue;        // stored downloaded files name
+stat_data global_stat_data;
 static void signal_handler(int sig) {
     global_exit_flag = true;
-}
-void process_tasks() {
-    DIR *dp = opendir(TASKS_DIR);
-    if (nullptr == dp) {
-        printf("can not open dir:%s\n", TASKS_DIR);
-        return;
-    }
-    struct dirent *ptr = nullptr;
-    char path[1024] = "";
-    download_task task;
-    while ((ptr = readdir(dp)) != nullptr) {
-        if (!strcmp(ptr->d_name, ".") || !strcmp(ptr->d_name, "..")) {
-            continue;
-        }
-        snprintf(path, sizeof(path), "%s%s", TASKS_DIR, ptr->d_name);
-        if (false == file_is_stready(path)) {
-            printf("%s is not ready!\n", path);
-            continue;
-        }
-        printf("scan task file:%s\n", path);
-        task.task_path = path;
-        if (true == task.get_task_list()) {
-            task.process();
-        }
-        if (true == global_exit_flag) {
-            break;
-        }
-    }
-    closedir(dp);
 }
 int main() {
     signal(SIGTERM, signal_handler);
@@ -46,10 +24,13 @@ int main() {
         printf("%d should be between 0 and 1000!", max_keep_cases_count);
         return -2;
     }
-    while (false == global_exit_flag) {
-        process_tasks();
-        sleep(SLEEP_TIME);
-    }
+    global_queue.set_size(max_keep_cases_count);
+    scan_files_thread scan_thread;
+    move_files_thread move_thread;
+    scan_thread.run();
+    move_thread.run();
+    scan_thread.join();
+    move_thread.join();
 
     return 0;
 }
